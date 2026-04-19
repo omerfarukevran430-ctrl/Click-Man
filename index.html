@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Click Man</title>
+    <title>Ömer Studio - Canlı Clicker Dünyası</title>
     <style>
         :root { --fener-lacivert: #0b132b; --fener-sari: #fca311; --panel-bg: #1c2541; }
         body { background: var(--fener-lacivert); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -48,7 +48,7 @@
 <body>
 
 <div id="start-screen">
-    <h1 style="color: var(--fener-sari);">CLICK MAN</h1>
+    <h1 style="color: var(--fener-sari);">ÖMERCRAFT WORLD</h1>
     <p>Yaşayan NPC'ler ve Görevler Dünyasına Hoş Geldin</p>
     <div>
         <button class="btn" onclick="initGame('Online')">ONLINE BAŞLAT</button>
@@ -90,6 +90,7 @@
 </div>
 
 <script>
+    // VERİLER
     let user = { score: 0, power: 1, missionsDone: 0 };
     let npcs = [
         { name: "ÖmerBot", score: 150, power: 2, personality: "Lider" },
@@ -111,23 +112,28 @@
         { id: 3, text: "Marketten İlk Alışverişini Yap", target: 1, type: "buy", reward: 500, done: false }
     ];
 
+    // OYUN BAŞLATMA
     function initGame(mode) {
         document.getElementById('start-screen').style.display = 'none';
         document.getElementById('game').style.display = 'grid';
         addChat("Sistem", mode + " mod başlatıldı. NPC'ler şu an aktif!", "system-msg");
+        
         renderShop();
         renderMissions();
         startNpcLogic();
         updateUI();
     }
 
+    // TIKLAMA VE PUAN
     function handleUserClick() {
         user.score += user.power;
         checkMissions();
         updateUI();
     }
 
+    // NPC MANTIĞI (Puan kasma ve Kendi aralarında konuşma)
     function startNpcLogic() {
+        // NPC'ler her 2 saniyede bir rastgele puan kasar
         setInterval(() => {
             npcs.forEach(npc => {
                 npc.score += npc.power + Math.floor(Math.random() * 5);
@@ -135,6 +141,7 @@
             updateLeaderboard();
         }, 2000);
 
+        // NPC'lerin kendi aralarında konuşması
         setInterval(() => {
             if (Math.random() > 0.7) {
                 let rNpc = npcs[Math.floor(Math.random() * npcs.length)];
@@ -142,7 +149,7 @@
                     "Beyler skor tablosunda yükseliyorum!",
                     "Marketten yeni eşya aldım, süpermiş.",
                     "Bu oyun çok sarıyor ya.",
-                    "Click Man oynamak bir ayrıcalık!",
+                    "Ömer Studio yine yapmış yapacağını!",
                     "Skorumu gördünüz mü? Beni geçemezsiniz."
                 ];
                 addChat(rNpc.name, quotes[Math.floor(Math.random() * quotes.length)], "npc-msg");
@@ -150,21 +157,27 @@
         }, 8000);
     }
 
+    // CHAT SİSTEMİ (NPC Cevap Verme)
     function sendChat() {
         let inp = document.getElementById('chat-input');
         let msg = inp.value.trim();
         if(!msg) return;
+
         addChat("Sen", msg);
         inp.value = "";
+
+        // NPC'lerin kullanıcıya cevap vermesi (Basit Kelime Analizi)
         setTimeout(() => {
             let reply = "";
             let rNpc = npcs[Math.floor(Math.random() * npcs.length)];
+            
             let lowMsg = msg.toLowerCase();
-            if(lowMsg.includes("selam") || lowMsg.includes("merhaba")) reply = "Selam dostum! Hoş geldin Click Man dünyasına.";
-            else if(lowMsg.includes("nasılsın")) reply = "İyiyim, tık tık puan kasıyorum. Sen?";
-            else if(lowMsg.includes("skor") || lowMsg.includes("puan")) reply = "Skor tablosunda amansız bir yarış var!";
+            if(lowMsg.includes("selam") || lowMsg.includes("merhaba")) reply = "Selam dostum! Hoş geldin.";
+            else if(lowMsg.includes("nasılsın")) reply = "İyiyim, puan kasmakla meşgulüm. Sen?";
+            else if(lowMsg.includes("skor") || lowMsg.includes("puan")) reply = "Skor tablosuna bak, oradayım!";
             else if(lowMsg.includes("yardım")) reply = "Marketten güçlendirme alarak daha hızlı puan kasabilirsin.";
             else reply = "Anlamadım ama haklı olabilirsin, tıkla tıkla!";
+
             addChat(rNpc.name, reply, "npc-msg");
         }, 1000);
     }
@@ -178,6 +191,7 @@
         area.scrollTop = area.scrollHeight;
     }
 
+    // MARKET VE GÖREVLER
     function renderShop() {
         let shop = document.getElementById('shop');
         shop.innerHTML = shopItems.map(item => `
@@ -193,8 +207,11 @@
             user.score -= cost;
             user.power += pwr;
             addChat("Sistem", `${name} satın alındı! Tıklama gücün arttı.`, "system-msg");
+            
+            // Satın alma görevi kontrolü
             let m = missions.find(x => x.type === "buy");
             if(m && !m.done) { m.done = true; user.score += m.reward; renderMissions(); }
+            
             updateUI();
         }
     }
@@ -221,9 +238,11 @@
         });
     }
 
+    // SKOR TABLOSU GÜNCELLEME
     function updateLeaderboard() {
         let all = [...npcs, { name: "SEN (Oyuncu)", score: user.score, isPlayer: true }];
         all.sort((a, b) => b.score - a.score);
+        
         let lb = document.getElementById('leaderboard');
         lb.innerHTML = all.map((p, index) => `
             <li class="${index === 0 ? 'rank-1' : ''}">
@@ -236,6 +255,8 @@
     function updateUI() {
         document.getElementById('user-score').innerText = Math.floor(user.score);
         document.getElementById('user-power').innerText = user.power;
+        
+        // Market butonlarını kontrol et
         shopItems.forEach(item => {
             let btn = document.getElementById('btn-' + item.name.replace(/ /g,''));
             if(btn) btn.disabled = user.score < item.cost;
