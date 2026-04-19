@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Click Man</title>
+    <style>
+        :root { --fener-lacivert: #0b132b; --fener-sari: #fca311; --panel-bg: #1c2541; }
+        body { background: var(--fener-lacivert); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Menü */
+        #start-screen { position: fixed; inset: 0; background: var(--fener-lacivert); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .btn { background: var(--fener-sari); color: var(--fener-lacivert); border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; border-radius: 8px; margin: 10px; transition: 0.3s; font-size: 1.2rem; }
+        .btn:hover { transform: scale(1.1); filter: brightness(1.2); }
+
+        /* Oyun Düzeni */
+        #game { display: none; width: 100%; height: 100%; display: grid; grid-template-columns: 300px 1fr 350px; gap: 10px; padding: 10px; }
+        .panel { background: var(--panel-bg); border-radius: 12px; border: 1px solid #3a506b; display: flex; flex-direction: column; padding: 15px; overflow: hidden; }
+        
+        /* Tıklama ve Görevler */
+        #click-zone { background: #0b132b; border: 4px dashed var(--fener-sari); border-radius: 20px; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; position: relative; }
+        #click-zone:active { transform: scale(0.97); }
+        .stats { font-size: 1.5rem; color: var(--fener-sari); font-weight: bold; margin-bottom: 20px; text-align: center; }
+        
+        .mission-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 10px; border-left: 4px solid #00ff00; }
+
+        /* Market */
+        .shop-list { overflow-y: auto; flex-grow: 1; }
+        .item { background: #0b132b; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+        .buy-btn { background: var(--fener-sari); border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .buy-btn:disabled { background: #555; cursor: not-allowed; }
+
+        /* Chat ve NPC */
+        #chat-area { flex-grow: 1; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.85rem; }
+        .msg { margin-bottom: 6px; line-height: 1.4; }
+        .msg b { color: var(--fener-sari); }
+        .npc-msg { font-style: italic; color: #00d4ff; }
+        .system-msg { color: #ff4757; font-weight: bold; }
+        
+        #input-box { display: flex; gap: 5px; }
+        #input-box input { flex-grow: 1; background: #0b132b; border: 1px solid var(--fener-sari); color: white; padding: 8px; border-radius: 4px; }
+
+        /* Skor Tablosu */
+        #leaderboard { list-style: none; padding: 0; }
+        #leaderboard li { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #3a506b; }
+        .rank-1 { color: gold; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="start-screen">
+    <h1 style="color: var(--fener-sari);">CLICK MAN</h1>
+    <p>Yaşayan NPC'ler ve Görevler Dünyasına Hoş Geldin</p>
+    <div>
+        <button class="btn" onclick="initGame('Online')">ONLINE BAŞLAT</button>
+        <button class="btn" onclick="initGame('Offline')">OFFLINE BAŞLAT</button>
+    </div>
+</div>
+
+<div id="game">
+    <div class="panel">
+        <h3 style="color: var(--fener-sari); margin-top:0;">📋 GÖREVLER</h3>
+        <div id="mission-container"></div>
+        <hr style="width:100%; border:0.5px solid #3a506b; margin: 15px 0;">
+        <h3 style="color: var(--fener-sari);">🛒 MARKET</h3>
+        <div class="shop-list" id="shop"></div>
+    </div>
+
+    <div class="panel">
+        <div class="stats">
+            SKOR: <span id="user-score">0</span> <br>
+            <small style="font-size: 1rem; color: #fff;">Güç: +<span id="user-power">1</span> / Tık</small>
+        </div>
+        <div id="click-zone" onclick="handleUserClick()">
+            <span style="font-size: 5rem;">🖱️</span>
+            <p>TIKLA VE KAZAN!</p>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3 style="color: var(--fener-sari); margin-top:0;">🏆 SKOR TABLOSU</h3>
+        <ul id="leaderboard"></ul>
+        <hr style="width:100%; border:0.5px solid #3a506b; margin: 15px 0;">
+        <h3 style="color: var(--fener-sari);">💬 CANLI SOHBET</h3>
+        <div id="chat-area"></div>
+        <div id="input-box">
+            <input type="text" id="chat-input" placeholder="NPC'lere bir şey sor..." onkeypress="if(event.key==='Enter') sendChat()">
+            <button class="buy-btn" onclick="sendChat()">GÖNDER</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let user = { score: 0, power: 1, missionsDone: 0 };
+    let npcs = [
+        { name: "ÖmerBot", score: 150, power: 2, personality: "Lider" },
+        { name: "GeceYolcusu", score: 80, power: 1, personality: "Yardımsever" },
+        { name: "KodUstası", score: 300, power: 5, personality: "Ciddi" }
+    ];
+
+    const shopItems = [
+        { name: "Bakır Tık", cost: 50, power: 2, icon: "🥉" },
+        { name: "Gümüş Tık", cost: 250, power: 10, icon: "🥈" },
+        { name: "Altın Tık", cost: 1000, power: 50, icon: "🥇" },
+        { name: "Elmas İşlemci", cost: 5000, power: 250, icon: "💎" },
+        { name: "OmerStudio AI", cost: 20000, power: 1000, icon: "🤖" }
+    ];
+
+    const missions = [
+        { id: 1, text: "100 Puana Ulaş", target: 100, reward: 50, done: false },
+        { id: 2, text: "500 Puan Kas", target: 500, reward: 200, done: false },
+        { id: 3, text: "Marketten İlk Alışverişini Yap", target: 1, type: "buy", reward: 500, done: false }
+    ];
+
+    function initGame(mode) {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('game').style.display = 'grid';
+        addChat("Sistem", mode + " mod başlatıldı. NPC'ler şu an aktif!", "system-msg");
+        renderShop();
+        renderMissions();
+        startNpcLogic();
+        updateUI();
+    }
+
+    function handleUserClick() {
+        user.score += user.power;
+        checkMissions();
+        updateUI();
+    }
+
+    function startNpcLogic() {
+        setInterval(() => {
+            npcs.forEach(npc => {
+                npc.score += npc.power + Math.floor(Math.random() * 5);
+            });
+            updateLeaderboard();
+        }, 2000);
+
+        setInterval(() => {
+            if (Math.random() > 0.7) {
+                let rNpc = npcs[Math.floor(Math.random() * npcs.length)];
+                let quotes = [
+                    "Beyler skor tablosunda yükseliyorum!",
+                    "Marketten yeni eşya aldım, süpermiş.",
+                    "Bu oyun çok sarıyor ya.",
+                    "Click Man oynamak bir ayrıcalık!",
+                    "Skorumu gördünüz mü? Beni geçemezsiniz."
+                ];
+                addChat(rNpc.name, quotes[Math.floor(Math.random() * quotes.length)], "npc-msg");
+            }
+        }, 8000);
+    }
+
+    function sendChat() {
+        let inp = document.getElementById('chat-input');
+        let msg = inp.value.trim();
+        if(!msg) return;
+        addChat("Sen", msg);
+        inp.value = "";
+        setTimeout(() => {
+            let reply = "";
+            let rNpc = npcs[Math.floor(Math.random() * npcs.length)];
+            let lowMsg = msg.toLowerCase();
+            if(lowMsg.includes("selam") || lowMsg.includes("merhaba")) reply = "Selam dostum! Hoş geldin Click Man dünyasına.";
+            else if(lowMsg.includes("nasılsın")) reply = "İyiyim, tık tık puan kasıyorum. Sen?";
+            else if(lowMsg.includes("skor") || lowMsg.includes("puan")) reply = "Skor tablosunda amansız bir yarış var!";
+            else if(lowMsg.includes("yardım")) reply = "Marketten güçlendirme alarak daha hızlı puan kasabilirsin.";
+            else reply = "Anlamadım ama haklı olabilirsin, tıkla tıkla!";
+            addChat(rNpc.name, reply, "npc-msg");
+        }, 1000);
+    }
+
+    function addChat(sender, text, className = "") {
+        let area = document.getElementById('chat-area');
+        let d = document.createElement('div');
+        d.className = "msg " + className;
+        d.innerHTML = `<b>${sender}:</b> ${text}`;
+        area.appendChild(d);
+        area.scrollTop = area.scrollHeight;
+    }
+
+    function renderShop() {
+        let shop = document.getElementById('shop');
+        shop.innerHTML = shopItems.map(item => `
+            <div class="item">
+                <span>${item.icon} ${item.name} (+${item.power})</span>
+                <button class="buy-btn" id="btn-${item.name.replace(/ /g,'')}" onclick="buyItem('${item.name}', ${item.cost}, ${item.power})">${item.cost}</button>
+            </div>
+        `).join('');
+    }
+
+    function buyItem(name, cost, pwr) {
+        if(user.score >= cost) {
+            user.score -= cost;
+            user.power += pwr;
+            addChat("Sistem", `${name} satın alındı! Tıklama gücün arttı.`, "system-msg");
+            let m = missions.find(x => x.type === "buy");
+            if(m && !m.done) { m.done = true; user.score += m.reward; renderMissions(); }
+            updateUI();
+        }
+    }
+
+    function renderMissions() {
+        let mBox = document.getElementById('mission-container');
+        mBox.innerHTML = missions.map(m => `
+            <div class="mission-box" style="border-left-color: ${m.done ? '#00ff00' : '#ffcc00'}">
+                <small>${m.done ? '✅ TAMAMLANDI' : '🎯 GÖREV'}</small><br>
+                <b>${m.text}</b><br>
+                <small>Ödül: ${m.reward} Puan</small>
+            </div>
+        `).join('');
+    }
+
+    function checkMissions() {
+        missions.forEach(m => {
+            if(!m.done && m.target && user.score >= m.target && !m.type) {
+                m.done = true;
+                user.score += m.reward;
+                addChat("Sistem", `GÖREV TAMAMLANDI: ${m.text}! +${m.reward} puan kazandın.`, "system-msg");
+                renderMissions();
+            }
+        });
+    }
+
+    function updateLeaderboard() {
+        let all = [...npcs, { name: "SEN (Oyuncu)", score: user.score, isPlayer: true }];
+        all.sort((a, b) => b.score - a.score);
+        let lb = document.getElementById('leaderboard');
+        lb.innerHTML = all.map((p, index) => `
+            <li class="${index === 0 ? 'rank-1' : ''}">
+                <span>${index + 1}. ${p.name}</span>
+                <span>${Math.floor(p.score)}</span>
+            </li>
+        `).join('');
+    }
+
+    function updateUI() {
+        document.getElementById('user-score').innerText = Math.floor(user.score);
+        document.getElementById('user-power').innerText = user.power;
+        shopItems.forEach(item => {
+            let btn = document.getElementById('btn-' + item.name.replace(/ /g,''));
+            if(btn) btn.disabled = user.score < item.cost;
+        });
+        updateLeaderboard();
+    }
+</script>
+
+</body>
+</html>
